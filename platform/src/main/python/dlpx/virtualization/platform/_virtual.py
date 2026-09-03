@@ -6,12 +6,14 @@
 """VirtualOperations for the Virtualization Platform
 
 """
+import inspect
 import json
 
 from dlpx.virtualization.api import common_pb2, platform_pb2
 from dlpx.virtualization.common import RemoteConnection, RemoteEnvironment
 from dlpx.virtualization.platform import (Mount, MountSpecification, Status,
-                                          VirtualSource, PhysicalSource)
+                                          VirtualSource, PhysicalSource,
+                                          PitParameters)
 from dlpx.virtualization.platform import validation_util as v
 from dlpx.virtualization.platform.exceptions import (
     IncorrectReturnTypeError, OperationAlreadyDefinedError,
@@ -233,9 +235,16 @@ class VirtualOperations(object):
         snapshot = SnapshotDefinition.from_dict(
             json.loads(request.snapshot.parameters.json))
 
-        config = self.configure_impl(virtual_source=virtual_source,
-                                     repository=repository,
-                                     snapshot=snapshot)
+        pit_parameters = (
+            PitParameters.from_proto(request.pit_parameters)
+            if request.HasField('pit_parameters') else None)
+
+        kwargs = dict(virtual_source=virtual_source,
+                      repository=repository,
+                      snapshot=snapshot)
+        if 'pit_parameters' in inspect.signature(self.configure_impl).parameters:
+            kwargs['pit_parameters'] = pit_parameters
+        config = self.configure_impl(**kwargs)
 
         # Validate that this is a SourceConfigDefinition object.
         if not isinstance(config, SourceConfigDefinition):
@@ -394,10 +403,17 @@ class VirtualOperations(object):
         repository = RepositoryDefinition.from_dict(
             json.loads(request.repository.parameters.json))
 
-        config = self.reconfigure_impl(snapshot=snapshot,
-                                       repository=repository,
-                                       source_config=source_config,
-                                       virtual_source=virtual_source)
+        pit_parameters = (
+            PitParameters.from_proto(request.pit_parameters)
+            if request.HasField('pit_parameters') else None)
+
+        kwargs = dict(snapshot=snapshot,
+                      repository=repository,
+                      source_config=source_config,
+                      virtual_source=virtual_source)
+        if 'pit_parameters' in inspect.signature(self.reconfigure_impl).parameters:
+            kwargs['pit_parameters'] = pit_parameters
+        config = self.reconfigure_impl(**kwargs)
 
         # Validate that this is a SourceConfigDefinition object.
         if not isinstance(config, SourceConfigDefinition):

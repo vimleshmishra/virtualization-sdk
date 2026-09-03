@@ -174,15 +174,23 @@ def _check_upgrade_args(upgrade_operations, expected_upgrade_args):
     return warnings
 
 
+# Args that plugins may optionally declare to opt into SDK-provided features.
+# The SDK passes these only when the plugin's function signature includes them.
+_OPTIONAL_ARGS = frozenset({'pit_parameters'})
+
+
 def _check_args(method_name, expected_args, actual_args):
     warnings = []
 
-    if len(expected_args) != len(actual_args):
+    required_actual = [a for a in actual_args if a not in _OPTIONAL_ARGS]
+
+    if len(expected_args) != len(required_actual):
         warnings.append('Number of arguments do not match in method {}.'
                         ' Expected: {}, Found: {}.'.format(
                             method_name, list(expected_args), actual_args))
 
-    if not all(arg in expected_args for arg in actual_args):
+    if not all(arg in expected_args or arg in _OPTIONAL_ARGS
+               for arg in actual_args):
         warnings.append('Named argument mismatch in method {}.'
                         ' Expected: {}, Found: {}.'.format(
                             method_name, list(expected_args), actual_args))

@@ -6,6 +6,7 @@
 """LinkedOperations for the Virtualization Platform
 
 """
+import inspect
 import json
 
 from dlpx.virtualization.api import common_pb2, platform_pb2
@@ -13,7 +14,7 @@ from dlpx.virtualization.common import RemoteConnection, RemoteEnvironment
 from dlpx.virtualization.common.exceptions import PluginRuntimeError
 from dlpx.virtualization.platform import (DirectSource, Mount,
                                           MountSpecification, StagedSource,
-                                          Status, PhysicalSource)
+                                          Status, PhysicalSource, PitParameters)
 from dlpx.virtualization.platform import validation_util as v
 from dlpx.virtualization.platform.exceptions import (
     IncorrectReturnTypeError, OperationAlreadyDefinedError,
@@ -276,11 +277,16 @@ class LinkedOperations(object):
             None if snap_params is None else
             SnapshotParametersDefinition.from_dict(snap_params))
 
-        snapshot = self.post_snapshot_impl(
+        result = self.post_snapshot_impl(
             direct_source=direct_source,
             repository=repository,
             source_config=source_config,
             optional_snapshot_parameters=snapshot_parameters)
+
+        if isinstance(result, tuple):
+            snapshot, pit_parameters = result
+        else:
+            snapshot, pit_parameters = result, None
 
         # Validate that this is a SnapshotDefinition object
         if not isinstance(snapshot, SnapshotDefinition):
@@ -291,6 +297,9 @@ class LinkedOperations(object):
             platform_pb2.DirectPostSnapshotResponse())
         direct_post_snapshot_response.return_value.snapshot.CopyFrom(
             to_protobuf(snapshot))
+        if pit_parameters is not None:
+            direct_post_snapshot_response.return_value.pit_parameters.CopyFrom(
+                pit_parameters.to_proto())
 
         return direct_post_snapshot_response
 
@@ -607,11 +616,16 @@ class LinkedOperations(object):
             None if snap_params is None else
             SnapshotParametersDefinition.from_dict(snap_params))
 
-        snapshot = self.post_snapshot_impl(
+        result = self.post_snapshot_impl(
             staged_source=staged_source,
             repository=repository,
             source_config=source_config,
             optional_snapshot_parameters=snapshot_parameters)
+
+        if isinstance(result, tuple):
+            snapshot, pit_parameters = result
+        else:
+            snapshot, pit_parameters = result, None
 
         # Validate that this is a SnapshotDefinition object
         if not isinstance(snapshot, SnapshotDefinition):
@@ -620,6 +634,9 @@ class LinkedOperations(object):
 
         response = platform_pb2.StagedPostSnapshotResponse()
         response.return_value.snapshot.CopyFrom(to_protobuf(snapshot))
+        if pit_parameters is not None:
+            response.return_value.pit_parameters.CopyFrom(
+                pit_parameters.to_proto())
 
         return response
 
